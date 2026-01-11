@@ -16,6 +16,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -23,14 +24,16 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final EmailService emailService;
+    private final PasswordEncoder passwordEncoder;
     private UserRepository userRepository;
     private CustomUserDetailsService customUserDetailsService;
     private TwoFactorOtpService twoFactorOtpService;
-    public AuthController(UserRepository userRepository, CustomUserDetailsService customUserDetailsService, TwoFactorOtpService twoFactorOtpService, EmailService emailService) {
+    public AuthController(UserRepository userRepository, CustomUserDetailsService customUserDetailsService, TwoFactorOtpService twoFactorOtpService, EmailService emailService, PasswordEncoder passwordEncoder) {
         this.customUserDetailsService = customUserDetailsService;
         this.userRepository = userRepository;
         this.twoFactorOtpService = twoFactorOtpService;
         this.emailService = emailService;
+        this.passwordEncoder = passwordEncoder;
     }
     @PostMapping("/signup")
     public ResponseEntity<AuthResponse> register(@RequestBody User user) throws Exception {
@@ -41,7 +44,7 @@ public class AuthController {
         User newUser = new User();
         newUser.setFullName(user.getFullName());
         newUser.setEmail(user.getEmail());
-        newUser.setPassword(user.getPassword());
+        newUser.setPassword(passwordEncoder.encode(user.getPassword()));
         User savedUser = userRepository.save(newUser);
 
         Authentication auth = new UsernamePasswordAuthenticationToken(user.getEmail(),user.getPassword());
@@ -96,7 +99,7 @@ public class AuthController {
         if(userDetails == null) {
             throw new BadCredentialsException("User not found");
         }
-        if(!password.equals(userDetails.getPassword())) {
+        if(!passwordEncoder.matches(password,userDetails.getPassword())) {
             throw new BadCredentialsException("Invalid password");
         }
 
